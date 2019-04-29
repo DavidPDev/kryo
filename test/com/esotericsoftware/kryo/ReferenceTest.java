@@ -27,6 +27,7 @@ import com.esotericsoftware.kryo.serializers.MapSerializer;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -56,6 +57,7 @@ public class ReferenceTest extends KryoTestCase {
 
 		Kryo kryo = new Kryo();
 		kryo.setRegistrationRequired(false);
+		kryo.setReferences(true);
 		kryo.addDefaultSerializer(Stuff.class, new MapSerializer<Stuff>() {
 			protected void writeHeader (Kryo kryo, Output output, Stuff map) {
 				kryo.writeObjectOrNull(output, map.ordering, Ordering.class);
@@ -146,7 +148,7 @@ public class ReferenceTest extends KryoTestCase {
 		public ArraySubListSerializer () {
 			try {
 				Class sublistClass = Class.forName("java.util.ArrayList$SubList");
-				parentField = sublistClass.getDeclaredField("parent");
+				parentField = getParentField(sublistClass);
 				offsetField = sublistClass.getDeclaredField("offset");
 				sizeField = sublistClass.getDeclaredField("size");
 				parentField.setAccessible(true);
@@ -154,6 +156,15 @@ public class ReferenceTest extends KryoTestCase {
 				sizeField.setAccessible(true);
 			} catch (Exception ex) {
 				throw new RuntimeException(ex);
+			}
+		}
+
+		private Field getParentField(Class sublistClass) throws NoSuchFieldException {
+			try {
+				// java 9+
+				return sublistClass.getDeclaredField("root");
+			} catch(NoSuchFieldException e) {
+				return sublistClass.getDeclaredField("parent");
 			}
 		}
 

@@ -22,11 +22,17 @@ package com.esotericsoftware.kryo.serializers;
 import com.esotericsoftware.kryo.KryoTestCase;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.serializers.GenericsTest.A.DontPassToSuper;
+import com.esotericsoftware.kryo.serializers.GenericsTest.ClassWithMap.MapKey;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -83,7 +89,6 @@ public class GenericsTest extends KryoTestCase {
 	// https://github.com/EsotericSoftware/kryo/issues/611
 	@Test
 	public void testSuperGenerics () {
-		kryo.setReferences(false);
 		kryo.register(SuperGenerics.Root.class);
 		kryo.register(SuperGenerics.Value.class);
 
@@ -96,6 +101,33 @@ public class GenericsTest extends KryoTestCase {
 
 		Input input = new Input(output.getBuffer(), 0, output.position());
 		SuperGenerics.Root root2 = kryo.readObject(input, SuperGenerics.Root.class);
+	}
+
+	// https://github.com/EsotericSoftware/kryo/issues/648
+	@Test
+	public void testMapTypeParams () {
+		ClassWithMap hasMap = new ClassWithMap();
+		MapKey key = new MapKey();
+		key.field1 = "foo";
+		key.field2 = "bar";
+		HashSet set = new HashSet();
+		set.add("one");
+		set.add("two");
+		hasMap.values.put(key, set);
+
+		kryo.register(ClassWithMap.class);
+		kryo.register(MapKey.class);
+		kryo.register(HashMap.class);
+		kryo.register(HashSet.class);
+
+		roundTrip(18, hasMap);
+	}
+
+	// https://github.com/EsotericSoftware/kryo/issues/622
+	@Test
+	public void testNotPassingToSuper () {
+		kryo.register(DontPassToSuper.class);
+		kryo.copy(new DontPassToSuper());
 	}
 
 	private interface Holder<V> {
@@ -241,6 +273,38 @@ public class GenericsTest extends KryoTestCase {
 		}
 
 		static public class Value extends ValueSuper<String> {
+		}
+	}
+
+	static public class ClassWithMap {
+		public final Map<MapKey, Set<String>> values = new HashMap();
+
+		public boolean equals (Object obj) {
+			if (this == obj) return true;
+			if (obj == null) return false;
+			if (getClass() != obj.getClass()) return false;
+			ClassWithMap other = (ClassWithMap)obj;
+			if (values == null) {
+				if (other.values != null) return false;
+			} else if (!values.toString().equals(other.values.toString())) return false;
+			return true;
+		}
+
+		static public class MapKey {
+			public String field1, field2;
+
+			public String toString () {
+				return field1 + ":" + field2;
+			}
+		}
+	}
+
+	static public class A<X> {
+		static public class B<Y> extends A {
+		}
+
+		static public class DontPassToSuper<Z> extends B {
+			B<Z> b;
 		}
 	}
 }

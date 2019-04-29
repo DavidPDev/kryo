@@ -43,6 +43,7 @@ import com.esotericsoftware.kryo.serializers.DefaultArraySerializers.StringArray
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.ArraysAsListSerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.BigDecimalSerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.BigIntegerSerializer;
+import com.esotericsoftware.kryo.serializers.DefaultSerializers.BitSetSerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.BooleanSerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.ByteSerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.CalendarSerializer;
@@ -100,6 +101,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
@@ -155,9 +157,9 @@ public class Kryo implements Poolable {
 	private Object needsCopyReference;
 	private final Generics generics = new Generics(this);
 
-	/** Creates a new Kryo with a {@link DefaultClassResolver} and a {@link MapReferenceResolver}. */
+	/** Creates a new Kryo with a {@link DefaultClassResolver} and references disabled. */
 	public Kryo () {
-		this(new DefaultClassResolver(), new MapReferenceResolver());
+		this(new DefaultClassResolver(), null);
 	}
 
 	/** Creates a new Kryo with a {@link DefaultClassResolver}.
@@ -217,6 +219,7 @@ public class Kryo implements Poolable {
 		addDefaultSerializer(Arrays.asList().getClass(), ArraysAsListSerializer.class);
 		addDefaultSerializer(void.class, new VoidSerializer());
 		addDefaultSerializer(PriorityQueue.class, new PriorityQueueSerializer());
+		addDefaultSerializer(BitSet.class, new BitSetSerializer());
 		OptionalSerializers.addDefaultSerializers(this);
 		TimeSerializers.addDefaultSerializers(this);
 		lowPriorityDefaultSerializerCount = defaultSerializers.size();
@@ -1045,9 +1048,10 @@ public class Kryo implements Poolable {
 		return warnUnregisteredClasses;
 	}
 
-	/** If true, each appearance of an object in the graph after the first is stored as an integer ordinal. When set to true,
-	 * {@link MapReferenceResolver} is used. This enables references to the same object and cyclic graphs to be serialized, but
-	 * typically adds overhead of one byte per object. Default is true.
+	/** If true, each appearance of an object in the graph after the first is stored as an integer ordinal. This enables references
+	 * to the same object and cyclic graphs to be serialized, but typically adds overhead of one byte per object. When set to true
+	 * and no {@link #setReferenceResolver(ReferenceResolver) reference resolver} has been set, {@link MapReferenceResolver} is
+	 * used. Default is false.
 	 * @return The previous value. */
 	public boolean setReferences (boolean references) {
 		boolean old = this.references;
